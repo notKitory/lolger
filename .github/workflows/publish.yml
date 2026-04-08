@@ -17,6 +17,7 @@ jobs:
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
+      - run: npm i -g npm@latest
       - run: npm ci
       - run: npm run build
 
@@ -66,5 +67,5 @@ jobs:
         with:
           tag_name: ${{ steps.create_tag.outputs.version }}
           files: ${{ steps.pack.outputs.TGZ }}
-          generate_release_notes: false  # Отключаем встроенную генерацию
+          generate_release_notes: false
           body: ${{ steps.generate_notes.outputs.release_body }}
