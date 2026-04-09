@@ -66,12 +66,7 @@ class Logger {
 		if (typeof msg === "string") {
 			return msg;
 		} else if (msg instanceof Error) {
-			return (
-				msg.stack
-					?.split("\n")
-					.map((l) => (l.startsWith("    ") ? l.slice(2) : l))
-					.join("\n") ?? `${msg.name}: ${msg.message}`
-			);
+			return msg.name;
 		} else if (msg instanceof Function) {
 			return "function()";
 		} else {
@@ -79,33 +74,43 @@ class Logger {
 		}
 	}
 
+	private output(level: LogLevelName, writer: (...args: unknown[]) => void, msgs: unknown[]) {
+		const message = msgs.map((msg) => this.msgToString(msg)).join(" ");
+		const errors = msgs.filter((msg): msg is Error => msg instanceof Error);
+
+		writer(this.format(level, message));
+		for (const error of errors) {
+			console.log(error);
+		}
+	}
+
 	public debug = (...msgs: unknown[]) => {
 		if (Logger.level <= LogLevel.DEBUG) {
-			console.debug(this.format("DEBUG", msgs.map(this.msgToString).join(" ")));
+			this.output("DEBUG", console.debug, msgs);
 		}
 	};
 
 	public log = (...msgs: unknown[]) => {
 		if (Logger.level <= LogLevel.INFO) {
-			console.log(this.format("LOG", msgs.map(this.msgToString).join(" ")));
+			this.output("LOG", console.log, msgs);
 		}
 	};
 
 	public info = (...msgs: unknown[]) => {
 		if (Logger.level <= LogLevel.INFO) {
-			console.info(this.format("INFO", msgs.map(this.msgToString).join(" ")));
+			this.output("INFO", console.info, msgs);
 		}
 	};
 
 	public warn = (...msgs: unknown[]) => {
 		if (Logger.level <= LogLevel.WARN) {
-			console.warn(this.format("WARN", msgs.map(this.msgToString).join(" ")));
+			this.output("WARN", console.warn, msgs);
 		}
 	};
 
 	public error = (...msgs: unknown[]) => {
 		if (Logger.level <= LogLevel.ERROR) {
-			console.error(this.format("ERROR", msgs.map(this.msgToString).join(" ")));
+			this.output("ERROR", console.error, msgs);
 		}
 	};
 }
