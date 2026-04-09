@@ -79,8 +79,8 @@ test("pretty console writes formatted line first and native errors separately", 
 		consoleMock.calls.warn[0][0],
 		/\d{2}:\d{2}:\d{2}\s+\[WARN\] \(browser\) Heads up Error$/,
 	);
-	assert.equal(consoleMock.calls.log.length, 1);
-	assert.equal(consoleMock.calls.log[0][0], error);
+	assert.equal(consoleMock.calls.error.length, 1);
+	assert.equal(consoleMock.calls.error[0][0], error);
 });
 
 test("pretty file mode inlines serialized errors into a single record", async () => {
