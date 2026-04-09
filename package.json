@@ -7,8 +7,6 @@
 		"logging",
 		"console",
 		"chalk",
-		"commonjs",
-		"cjs",
 		"typescript",
 		"esm"
 	],
@@ -23,14 +21,12 @@
 	},
 	"homepage": "https://github.com/notKitory/lolger#readme",
 	"type": "module",
-	"main": "./dist/cjs/index.js",
-	"module": "./dist/index.js",
+	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
-			"require": "./dist/cjs/index.js",
 			"default": "./dist/index.js"
 		},
 		"./package.json": "./package.json"
@@ -43,10 +39,7 @@
 	},
 	"scripts": {
 		"clean": "node ./scripts/clean.mjs",
-		"build:esm": "tsc -p tsconfig.json",
-		"build:cjs": "tsc -p tsconfig.cjs.json",
-		"build:cjs:package": "node ./scripts/write-cjs-package.mjs",
-		"build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:cjs:package",
+		"build": "npm run clean && tsc -p tsconfig.json",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"lint": "node ./scripts/lint.mjs",
 		"test": "npm run build && node --test ./test/index.test.js",

@@ -12,6 +12,8 @@
 npm i lolger
 ```
 
+`lolger` — ESM-пакет.
+
 ## Быстрый старт
 
 ```ts
@@ -193,7 +195,6 @@ function setLogLevel(level: LogLevel): void;
 - В file mode и structured-форматах ошибки сериализуются внутри одной записи.
 - `baseFields` попадают в structured output и `logfmt`.
 - `fileTransport()` поддерживается в Node.js и Deno. В браузерах доступен только console output.
-- Пакет поставляется сразу с ESM- и CommonJS-entry point. Поддерживаются и `import ... from "lolger"`, и `require("lolger")`.
 - При `maxFiles = 1` форматы `jsonl` и `logfmt` удаляют старые строки сверху, освобождая место для новых. Форматы `pretty` и `json` в этом режиме просто заменяют файл новой записью.
 
 ## Разработка

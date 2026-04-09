@@ -35,12 +35,6 @@ if (!rootExport || typeof rootExport !== "object") {
 		issues.push('package.json: exports["."].import must be defined');
 	}
 
-	if (typeof rootExport.require !== "string") {
-		issues.push(
-			'package.json: exports["."].require must be defined for CommonJS consumers',
-		);
-	}
-
 	if (typeof rootExport.types !== "string") {
 		issues.push('package.json: exports["."].types must be defined');
 	}
@@ -48,13 +42,15 @@ if (!rootExport || typeof rootExport !== "object") {
 
 if (
 	typeof packageJson.main !== "string" ||
-	!packageJson.main.includes("/cjs/")
+	packageJson.main !== "./dist/index.js"
 ) {
-	issues.push("package.json: main should point to the CommonJS build");
+	issues.push('package.json: main should point to "./dist/index.js"');
 }
 
-if (typeof packageJson.module !== "string") {
-	issues.push("package.json: module should point to the ESM build");
+if ("module" in packageJson) {
+	issues.push(
+		"package.json: module field should be omitted for the ESM-only package layout",
+	);
 }
 
 if (issues.length > 0) {

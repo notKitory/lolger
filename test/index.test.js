@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, test } from "node:test";
@@ -17,8 +16,6 @@ import {
 	Lolger,
 	lolger,
 } from "../dist/index.js";
-
-const require = createRequire(import.meta.url);
 
 afterEach(async () => {
 	delete globalThis.Deno;
@@ -557,36 +554,6 @@ test("built output keeps Node file system access out of static imports", async (
 
 	assert.doesNotMatch(builtSource, /^import .*node:fs\/promises/m);
 	assert.doesNotMatch(builtSource, /^import .*node:fs$/m);
-});
-
-test("commonjs consumers can require the package root", async () => {
-	const cjsModule = require("..");
-	const writes = [];
-
-	assert.equal(typeof cjsModule.getLogger, "function");
-	assert.equal(cjsModule.LogLevel.INFO, LogLevel.INFO);
-	assert.equal(cjsModule.lolger.constructor, cjsModule.Lolger);
-
-	const cjsLolger = new cjsModule.Lolger({
-		level: cjsModule.LogLevel.DEBUG,
-		transports: [
-			{
-				name: "cjs-memory",
-				format: "jsonl",
-				write(record, rendered) {
-					writes.push({ record, rendered });
-				},
-			},
-		],
-	});
-
-	cjsLolger.getLogger("cjs").info("from require");
-	await cjsLolger.flushLogger();
-
-	assert.equal(writes.length, 1);
-	assert.equal(JSON.parse(writes[0].rendered).message, "from require");
-
-	await cjsLolger.closeLogger();
 });
 
 test("custom Lolger instances stay isolated from the global singleton", async () => {
