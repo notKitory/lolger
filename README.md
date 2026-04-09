@@ -1,25 +1,21 @@
 # lolger
-Yet another beautiful (useless) logger with clean formatting, colored levels and TypeScript out of the box.
 
-## Features
-- Readable, consistent format: [HH:MM:SS] [LEVEL] (namespace) message.
-- Colorized levels (DEBUG/LOG/INFO/WARN/ERROR) for quick scanning.
-- TypeScript-first API and shipped .d.ts types.
-- Supports custom namespaces.
-- Cross-platform (Node.js, Deno, Browser) compatibility.
+[English](./README.md) | [Русский](./README_RU.md)
 
-## Install
-`npm install lolger`
+`lolger` is yet another tiny colorful logger for Node.js, Deno, and browsers.
 
-`pnpm add lolger`
+![Example output](./images/example.png)
 
-`yarn add lolger`
+## Installation
 
-Note: Chalk 5 is ESM. This package targets ESM and requires Node.js ≥ 12.20. [Chalk release notes] [26].
+```bash
+npm i lolger
+```
 
-## Quick start
-```js
-import { getLogger, Logger, LogLevel } from "lolger";
+## Usage
+
+```ts
+import { getLogger, LogLevel, setLogLevel } from "lolger";
 
 setLogLevel(LogLevel.DEBUG);
 
@@ -32,16 +28,64 @@ logger.warn("Oh, warn...", new Error("warning"));
 logger.error("Error!!!", new Error("boom"));
 ```
 
-What it looks like in a terminal:
-![Example image](/images/example.png?raw=true)
+## Example Output
+
+```text
+12:48:03 [DEBUG] (my-app) Debug something {
+  "id": 1
+}
+12:48:03   [LOG] (my-app) Just a log
+12:48:03  [INFO] (my-app) Some info: nothing here
+12:48:03  [WARN] (my-app) Oh, warn... Error
+12:48:03 [ERROR] (my-app) Error!!! Error
+```
 
 ## API
-- `setLogLevel(level: LogLevel): void` — set global threshold.
-- `getLogger(namespace: string): Logger` — returns a namespaced logger.
-- `logger.debug/log/info/warn/error(...msgs: unknown[]): void;` — log messages. Accepts any number of arguments.
 
-## Contributing
-If you have any suggestions, please open an [issue](https://github.com/notKitory/lolger/issues) or a [pull request](https://github.com/notKitory/lolger/pulls). Thanks!
+```ts
+enum LogLevel {
+  DEBUG = 0,
+  LOG = 1,
+  INFO = 2,
+  WARN = 3,
+  ERROR = 4,
+}
 
-## License
-Apache License 2.0. See LICENSE for full license text.
+class Logger {
+  static level: LogLevel;
+
+  debug(...msgs: unknown[]): void;
+  log(...msgs: unknown[]): void;
+  info(...msgs: unknown[]): void;
+  warn(...msgs: unknown[]): void;
+  error(...msgs: unknown[]): void;
+}
+
+function getLogger(namespace: string): Logger;
+function setLogLevel(level: LogLevel): void;
+```
+
+| Export | Description |
+| --- | --- |
+| `LogLevel` | Log level enum used to control the global logging threshold. |
+| `setLogLevel(level)` | Sets the global log level for all logger instances. |
+| `getLogger(namespace)` | Creates a logger with a specific color for the given namespace. |
+| `logger.debug(...msgs)` | Prints messages when the active level is `DEBUG`. |
+| `logger.log(...msgs)` | Prints messages when the active level is `LOG` or more important. |
+| `logger.info(...msgs)` | Prints messages when the active level is `INFO` or more important. |
+| `logger.warn(...msgs)` | Prints messages when the active level is `WARN` or more important. |
+| `logger.error(...msgs)` | Prints messages when the active level is `ERROR`. |
+
+## Notes
+
+- The default global level is `LogLevel.LOG`.
+- Each namespace gets a stable color chosen from an internal palette.
+- Strings are printed as-is.
+- Plain objects are serialized with `json-stringify-safe` for correct handling of circular references.
+- Functions are displayed as `function()`.
+- `Error` instances are included in the formatted message and then forwarded to the console as native errors.
+- The package is TypeScript-first and ships declaration files.
+
+## Development
+
+If you have ideas, suggestions, or fixes, I would appreciate an [issue](https://github.com/notKitory/lolger/issues) or a [pull request](https://github.com/notKitory/lolger/pulls).
