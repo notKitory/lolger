@@ -209,5 +209,5 @@ async function closeTransportStates(states: TransportState[]): Promise<void> {
 }
 
 function hasOwn<T extends object>(value: T, key: PropertyKey): boolean {
-	return Object.hasOwn(value, key);
+	return Object.prototype.hasOwnProperty.call(value, key);
 }
