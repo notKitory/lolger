@@ -3,7 +3,7 @@
 import chalk from "chalk";
 
 import type { LogFormat } from "../types.js";
-import { LEVEL_CHALK, type ChalkType, namespaceColors } from "./constants.js";
+import { type ChalkType, LEVEL_CHALK, namespaceColors } from "./constants.js";
 import type { InternalLogRecord, TransportMeta } from "./internal.js";
 import { toStructuredPayload } from "./record.js";
 
@@ -22,7 +22,6 @@ export function renderRecord(
 			return JSON.stringify(toStructuredPayload(record));
 		case "logfmt":
 			return renderLogfmt(record);
-		case "pretty":
 		default:
 			return renderPretty(record, {
 				colors: meta.colors,
@@ -43,17 +42,23 @@ function renderPretty(
 	const base = [
 		colorize(record.timestamp, chalk.gray, options.colors),
 		colorize(levelStr, LEVEL_CHALK[record.level], options.colors),
-		colorize(namespaceText, getNamespaceChalk(record.namespace), options.colors),
+		colorize(
+			namespaceText,
+			getNamespaceChalk(record.namespace),
+			options.colors,
+		),
 	]
 		.filter((part) => part.length > 0)
 		.join(" ");
 
-	let output = record.message.length > 0
-		? `${base} ${colorize(record.message, chalk.reset, options.colors)}`
-		: base;
+	let output =
+		record.message.length > 0
+			? `${base} ${colorize(record.message, chalk.reset, options.colors)}`
+			: base;
 
 	if (options.inlineErrors && record.errors && record.errors.length > 0) {
-		const errorPayload = record.errors.length === 1 ? record.errors[0] : record.errors;
+		const errorPayload =
+			record.errors.length === 1 ? record.errors[0] : record.errors;
 		output = `${output}\n${JSON.stringify(errorPayload, null, 2)}`;
 	}
 
@@ -88,7 +93,11 @@ function logfmtPair(key: string, value: unknown): string {
 }
 
 function normalizeLogfmtValue(value: unknown): string | number | boolean {
-	if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+	if (
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	) {
 		return value;
 	}
 
@@ -105,7 +114,7 @@ function encodeLogfmtValue(value: string | number | boolean): string {
 	}
 
 	if (value.length === 0 || /[\s="\\]/.test(value)) {
-		return `"${value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"`;
+		return `"${value.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
 	}
 
 	return value;
@@ -125,7 +134,10 @@ function getNamespaceChalk(namespace: string): ChalkType {
 		return chalk.white;
 	}
 
-	const hash = Array.from(namespace).reduce((total, char) => total + char.charCodeAt(0), 0);
+	const hash = Array.from(namespace).reduce(
+		(total, char) => total + char.charCodeAt(0),
+		0,
+	);
 	const index = hash % namespaceColors.length;
 	return chalk.hex(namespaceColors[index]);
 }

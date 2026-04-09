@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import type { ConfigureLoggerOptions } from "./types.js";
 import { Lolger } from "./lolger.js";
-import { LogLevel } from "./types.js";
+import type { ConfigureLoggerOptions, LogLevel } from "./types.js";
 
 /**
  * Global singleton `Lolger` instance used by the convenience exports.
@@ -48,9 +47,6 @@ export { Logger } from "./logger.js";
 export { Lolger } from "./lolger.js";
 export { consoleTransport } from "./transports/console.js";
 export { fileTransport } from "./transports/file.js";
-export { LogLevel } from "./types.js";
-export { closeLogger, configureLogger, flushLogger, getLogger, lolger, setLogLevel };
-
 export type {
 	ConfigureLoggerOptions,
 	ConsoleTransportOptions,
@@ -63,3 +59,12 @@ export type {
 	TimestampFormat,
 	Transport,
 } from "./types.js";
+export { LogLevel } from "./types.js";
+export {
+	closeLogger,
+	configureLogger,
+	flushLogger,
+	getLogger,
+	lolger,
+	setLogLevel,
+};

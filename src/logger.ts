@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel } from "./types.js";
 import { namespaceColors } from "./core/constants.js";
+import { LogLevel } from "./types.js";
 
 type EmitFn = (namespace: string, level: LogLevel, msgs: unknown[]) => void;
 

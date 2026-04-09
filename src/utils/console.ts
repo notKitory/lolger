@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel } from "../types.js";
 import type { TransportState } from "../core/internal.js";
+import { LogLevel } from "../types.js";
 
 /**
  * Selects the appropriate console writer for a log level and stderr policy.
  */
-export function getConsoleWriter(level: LogLevel, stderrLevels: Set<LogLevel>): (message: string) => void {
+export function getConsoleWriter(
+	level: LogLevel,
+	stderrLevels: Set<LogLevel>,
+): (message: string) => void {
 	const safeConsole = getSafeConsole();
 
 	if (level === LogLevel.ERROR) {
@@ -14,7 +17,9 @@ export function getConsoleWriter(level: LogLevel, stderrLevels: Set<LogLevel>): 
 	}
 
 	if (level === LogLevel.WARN) {
-		return bindConsoleMethod(safeConsole.warn ?? safeConsole.error ?? safeConsole.log);
+		return bindConsoleMethod(
+			safeConsole.warn ?? safeConsole.error ?? safeConsole.log,
+		);
 	}
 
 	if (stderrLevels.has(level)) {
@@ -42,17 +47,20 @@ export function emitNativeErrors(errors: Error[]): void {
 	}
 
 	const safeConsole = getSafeConsole();
-	const log = bindConsoleMethod(safeConsole.log);
+	const error = bindConsoleMethod(safeConsole.error);
 
-	for (const error of errors) {
-		log(error);
+	for (const child of errors) {
+		error(child);
 	}
 }
 
 /**
  * Reports a fatal transport failure once and marks the transport as disabled.
  */
-export function reportTransportFailure(state: TransportState, error: unknown): void {
+export function reportTransportFailure(
+	state: TransportState,
+	error: unknown,
+): void {
 	state.failed = true;
 
 	if (state.diagnosticEmitted) {
@@ -63,7 +71,11 @@ export function reportTransportFailure(state: TransportState, error: unknown): v
 
 	const safeConsole = getSafeConsole();
 	const errorWriter = safeConsole.error ?? safeConsole.log;
-	errorWriter.call(safeConsole, `[lolger] transport "${state.transport.name}" failed`, error);
+	errorWriter.call(
+		safeConsole,
+		`[lolger] transport "${state.transport.name}" failed`,
+		error,
+	);
 }
 
 function bindConsoleMethod(

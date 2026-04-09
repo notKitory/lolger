@@ -1,9 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel, type ConfigureLoggerOptions } from "./types.js";
-import { closeState, configureState, dispatchLog, flushState, installDefaultTransports, setStateLogLevel } from "./core/service.js";
+import {
+	closeState,
+	configureState,
+	dispatchLog,
+	flushState,
+	installDefaultTransports,
+	setStateLogLevel,
+} from "./core/service.js";
 import { createLoggerState, type LoggerState } from "./core/state.js";
 import { Logger } from "./logger.js";
+import type { ConfigureLoggerOptions, LogLevel } from "./types.js";
 
 /**
  * Owns a full logging pipeline, including configuration, transports and the
@@ -73,7 +80,11 @@ class Lolger {
 		return closeState(this.state);
 	};
 
-	private emit = (namespace: string, level: LogLevel, msgs: unknown[]): void => {
+	private emit = (
+		namespace: string,
+		level: LogLevel,
+		msgs: unknown[],
+	): void => {
 		dispatchLog(this.state, namespace, level, msgs);
 	};
 }

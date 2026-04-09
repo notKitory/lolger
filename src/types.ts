@@ -98,8 +98,6 @@ interface FileTransportOptions {
 	mkdir?: boolean;
 }
 
-export { LogLevel };
-
 export type {
 	ConfigureLoggerOptions,
 	ConsoleTransportOptions,
@@ -112,3 +110,4 @@ export type {
 	TimestampFormat,
 	Transport,
 };
+export { LogLevel };

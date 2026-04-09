@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel, type LogRecord } from "../types.js";
+import type { LogLevel, LogRecord } from "../types.js";
 import { formatTimestamp } from "../utils/time.js";
-import { messagePart, normalizeFields, normalizeUnknown, serializeError } from "../utils/value.js";
+import {
+	messagePart,
+	normalizeFields,
+	normalizeUnknown,
+	serializeError,
+} from "../utils/value.js";
 import { LOG_LEVEL_NAMES } from "./constants.js";
 import type { InternalLogRecord } from "./internal.js";
 import type { LoggerState } from "./state.js";
@@ -29,7 +34,10 @@ export function createLogRecord(
 		message: msgs.map(messagePart).join(" "),
 		args: msgs.map((msg) => normalizeUnknown(msg)),
 		fields: normalizedFields,
-		errors: rawErrors.length > 0 ? rawErrors.map((error) => serializeError(error)) : undefined,
+		errors:
+			rawErrors.length > 0
+				? rawErrors.map((error) => serializeError(error))
+				: undefined,
 		rawErrors,
 	};
 }

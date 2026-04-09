@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel, type LogFormat, type TimestampFormat } from "../types.js";
+import { type LogFormat, LogLevel, type TimestampFormat } from "../types.js";
 import type { TransportState } from "./internal.js";
 
 export interface LoggerState {

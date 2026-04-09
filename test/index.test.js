@@ -1,21 +1,24 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 
 import {
-	LogLevel,
-	Lolger,
 	closeLogger,
 	configureLogger,
 	consoleTransport,
 	fileTransport,
 	flushLogger,
 	getLogger,
+	LogLevel,
+	Lolger,
 	lolger,
 } from "../dist/index.js";
+
+const require = createRequire(import.meta.url);
 
 afterEach(async () => {
 	delete globalThis.Deno;
@@ -169,7 +172,10 @@ test("functions are rendered with name, kind, and arity", async () => {
 	await flushLogger();
 
 	const payload = JSON.parse(writes[0].rendered);
-	assert.equal(payload.message, "[Function: handler/2] [AsyncFunction: fetchUser/1]");
+	assert.equal(
+		payload.message,
+		"[Function: handler/2] [AsyncFunction: fetchUser/1]",
+	);
 	assert.equal(payload.args[0], "[Function: handler/2]");
 	assert.equal(payload.args[1], "[AsyncFunction: fetchUser/1]");
 });
@@ -277,8 +283,12 @@ test("file rotation with maxFiles > 1 keeps numbered archives", async () => {
 		await flushLogger();
 
 		const current = JSON.parse((await readFile(filePath, "utf8")).trim());
-		const archive1 = JSON.parse((await readFile(`${filePath}.1`, "utf8")).trim());
-		const archive2 = JSON.parse((await readFile(`${filePath}.2`, "utf8")).trim());
+		const archive1 = JSON.parse(
+			(await readFile(`${filePath}.1`, "utf8")).trim(),
+		);
+		const archive2 = JSON.parse(
+			(await readFile(`${filePath}.2`, "utf8")).trim(),
+		);
 
 		assert.equal(current.message, "third");
 		assert.equal(archive1.message, "second");
@@ -337,7 +347,10 @@ test("single-file retention for line-oriented formats drops oldest lines from th
 		logger.info("three");
 		await flushLogger();
 
-		const lines = (await readFile(filePath, "utf8")).trim().split("\n").map((line) => JSON.parse(line));
+		const lines = (await readFile(filePath, "utf8"))
+			.trim()
+			.split("\n")
+			.map((line) => JSON.parse(line));
 
 		assert.equal(lines.length, 2);
 		assert.equal(lines[0].message, "two");
@@ -368,7 +381,9 @@ test("single-file retention keeps an oversize line-oriented record whole", async
 			],
 		});
 
-		getLogger("oversize").info("this message is definitely bigger than ten bytes");
+		getLogger("oversize").info(
+			"this message is definitely bigger than ten bytes",
+		);
 		await flushLogger();
 
 		const text = await readFile(filePath, "utf8");
@@ -509,11 +524,69 @@ test("file transport prefers the Deno runtime branch when Deno is available", as
 	assert.equal(payload.message, "from deno");
 });
 
+test("file transport falls back to Deno.writeTextFile append mode", async () => {
+	const denoMock = createDenoMock({ omitAppendTextFile: true });
+	globalThis.Deno = denoMock;
+
+	configureLogger({
+		level: LogLevel.DEBUG,
+		timestamp: "iso",
+		transports: [
+			fileTransport({
+				path: "/virtual/fallback.log",
+				format: "jsonl",
+			}),
+		],
+	});
+
+	getLogger("deno-fallback").info("fallback works");
+	await flushLogger();
+
+	const stored = denoMock.readStored("/virtual/fallback.log");
+	const payload = JSON.parse(stored.trim());
+
+	assert.equal(payload.namespace, "deno-fallback");
+	assert.equal(payload.message, "fallback works");
+});
+
 test("built output keeps Node file system access out of static imports", async () => {
-	const builtSource = await readFile(new URL("../dist/index.js", import.meta.url), "utf8");
+	const builtSource = await readFile(
+		new URL("../dist/index.js", import.meta.url),
+		"utf8",
+	);
 
 	assert.doesNotMatch(builtSource, /^import .*node:fs\/promises/m);
 	assert.doesNotMatch(builtSource, /^import .*node:fs$/m);
+});
+
+test("commonjs consumers can require the package root", async () => {
+	const cjsModule = require("..");
+	const writes = [];
+
+	assert.equal(typeof cjsModule.getLogger, "function");
+	assert.equal(cjsModule.LogLevel.INFO, LogLevel.INFO);
+	assert.equal(cjsModule.lolger.constructor, cjsModule.Lolger);
+
+	const cjsLolger = new cjsModule.Lolger({
+		level: cjsModule.LogLevel.DEBUG,
+		transports: [
+			{
+				name: "cjs-memory",
+				format: "jsonl",
+				write(record, rendered) {
+					writes.push({ record, rendered });
+				},
+			},
+		],
+	});
+
+	cjsLolger.getLogger("cjs").info("from require");
+	await cjsLolger.flushLogger();
+
+	assert.equal(writes.length, 1);
+	assert.equal(JSON.parse(writes[0].rendered).message, "from require");
+
+	await cjsLolger.closeLogger();
 });
 
 test("custom Lolger instances stay isolated from the global singleton", async () => {
@@ -613,20 +686,17 @@ function getByteLength(text) {
 	return new TextEncoder().encode(text).length;
 }
 
-function createDenoMock() {
+function createDenoMock(options = {}) {
 	class DenoNotFound extends Error {}
 	class DenoAlreadyExists extends Error {}
 
 	const files = new Map();
+	const omitAppendTextFile = options.omitAppendTextFile === true;
 
-	return {
+	const deno = {
 		errors: {
 			AlreadyExists: DenoAlreadyExists,
 			NotFound: DenoNotFound,
-		},
-		appendTextFile(filePath, data) {
-			files.set(filePath, `${files.get(filePath) ?? ""}${data}`);
-			return Promise.resolve();
 		},
 		mkdir() {
 			return Promise.resolve();
@@ -658,7 +728,12 @@ function createDenoMock() {
 			}
 			return Promise.resolve({ size: getByteLength(files.get(filePath)) });
 		},
-		writeTextFile(filePath, data) {
+		writeTextFile(filePath, data, options = {}) {
+			if (options.append) {
+				files.set(filePath, `${files.get(filePath) ?? ""}${data}`);
+				return Promise.resolve();
+			}
+
 			files.set(filePath, data);
 			return Promise.resolve();
 		},
@@ -666,4 +741,13 @@ function createDenoMock() {
 			return files.get(filePath) ?? "";
 		},
 	};
+
+	if (!omitAppendTextFile) {
+		deno.appendTextFile = (filePath, data) => {
+			files.set(filePath, `${files.get(filePath) ?? ""}${data}`);
+			return Promise.resolve();
+		};
+	}
+
+	return deno;
 }

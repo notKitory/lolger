@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { LogLevel, type ConfigureLoggerOptions, type Transport } from "../types.js";
 import { consoleTransport } from "../transports/console.js";
+import type { ConfigureLoggerOptions, LogLevel, Transport } from "../types.js";
 import { emitNativeErrors, reportTransportFailure } from "../utils/console.js";
+import type {
+	InternalLogRecord,
+	InternalTransport,
+	TransportState,
+} from "./internal.js";
+import { SET_ACTIVE_FORMAT, TRANSPORT_META } from "./internal.js";
 import { createLogRecord } from "./record.js";
 import { renderRecord } from "./render.js";
-import type { InternalLogRecord, InternalTransport, TransportState } from "./internal.js";
-import { SET_ACTIVE_FORMAT, TRANSPORT_META } from "./internal.js";
 import type { LoggerState } from "./state.js";
 
 /**
@@ -23,7 +27,10 @@ export function installDefaultTransports(state: LoggerState): void {
 /**
  * Applies configuration updates to a specific `Lolger` instance.
  */
-export function configureState(state: LoggerState, options: ConfigureLoggerOptions): void {
+export function configureState(
+	state: LoggerState,
+	options: ConfigureLoggerOptions,
+): void {
 	if (hasOwn(options, "level") && options.level !== undefined) {
 		state.level = options.level;
 	}
@@ -62,20 +69,22 @@ export function setStateLogLevel(state: LoggerState, level: LogLevel): void {
 export async function flushState(state: LoggerState): Promise<void> {
 	const states = state.transports.slice();
 
-	await Promise.all(states.map(async (transportState) => {
-		await transportState.pending;
-		if (transportState.failed) {
-			return;
-		}
-
-		if (transportState.transport.flush) {
-			try {
-				await transportState.transport.flush();
-			} catch (error) {
-				reportTransportFailure(transportState, error);
+	await Promise.all(
+		states.map(async (transportState) => {
+			await transportState.pending;
+			if (transportState.failed) {
+				return;
 			}
-		}
-	}));
+
+			if (transportState.transport.flush) {
+				try {
+					await transportState.transport.flush();
+				} catch (error) {
+					reportTransportFailure(transportState, error);
+				}
+			}
+		}),
+	);
 }
 
 /**
@@ -84,25 +93,27 @@ export async function flushState(state: LoggerState): Promise<void> {
 export async function closeState(state: LoggerState): Promise<void> {
 	const states = state.transports.slice();
 
-	await Promise.all(states.map(async (transportState) => {
-		await transportState.pending;
+	await Promise.all(
+		states.map(async (transportState) => {
+			await transportState.pending;
 
-		if (!transportState.failed && transportState.transport.flush) {
-			try {
-				await transportState.transport.flush();
-			} catch (error) {
-				reportTransportFailure(transportState, error);
+			if (!transportState.failed && transportState.transport.flush) {
+				try {
+					await transportState.transport.flush();
+				} catch (error) {
+					reportTransportFailure(transportState, error);
+				}
 			}
-		}
 
-		if (transportState.transport.close) {
-			try {
-				await transportState.transport.close();
-			} catch (error) {
-				reportTransportFailure(transportState, error);
+			if (transportState.transport.close) {
+				try {
+					await transportState.transport.close();
+				} catch (error) {
+					reportTransportFailure(transportState, error);
+				}
 			}
-		}
-	}));
+		}),
+	);
 }
 
 /**
@@ -174,27 +185,29 @@ function dispatchToTransport(
 }
 
 async function closeTransportStates(states: TransportState[]): Promise<void> {
-	await Promise.all(states.map(async (transportState) => {
-		await transportState.pending;
+	await Promise.all(
+		states.map(async (transportState) => {
+			await transportState.pending;
 
-		if (!transportState.failed && transportState.transport.flush) {
-			try {
-				await transportState.transport.flush();
-			} catch (error) {
-				reportTransportFailure(transportState, error);
+			if (!transportState.failed && transportState.transport.flush) {
+				try {
+					await transportState.transport.flush();
+				} catch (error) {
+					reportTransportFailure(transportState, error);
+				}
 			}
-		}
 
-		if (transportState.transport.close) {
-			try {
-				await transportState.transport.close();
-			} catch (error) {
-				reportTransportFailure(transportState, error);
+			if (transportState.transport.close) {
+				try {
+					await transportState.transport.close();
+				} catch (error) {
+					reportTransportFailure(transportState, error);
+				}
 			}
-		}
-	}));
+		}),
+	);
 }
 
 function hasOwn<T extends object>(value: T, key: PropertyKey): boolean {
-	return Object.prototype.hasOwnProperty.call(value, key);
+	return Object.hasOwn(value, key);
 }

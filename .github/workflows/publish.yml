@@ -27,8 +27,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # - name: Run checks
-      #   run: npm run check
+      - name: Lint repository
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run tests
+        run: npm test
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Run Deno smoke test
+        run: npm run deno:smoke
 
       - name: Publish to npm
         run: npm publish --provenance

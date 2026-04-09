@@ -27,7 +27,10 @@ export const LOG_LEVEL_NAMES: Record<LogLevel, LogLevelName> = {
 	[LogLevel.ERROR]: "ERROR",
 };
 
-export const DEFAULT_STDERR_LEVELS = new Set<LogLevel>([LogLevel.WARN, LogLevel.ERROR]);
+export const DEFAULT_STDERR_LEVELS = new Set<LogLevel>([
+	LogLevel.WARN,
+	LogLevel.ERROR,
+]);
 
 export const LEVEL_CHALK: Record<LogLevelName, ChalkType> = {
 	DEBUG: chalk.magenta.bold,

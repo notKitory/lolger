@@ -10,9 +10,10 @@ import type { SerializedError } from "../types.js";
  */
 
 // biome-ignore lint/complexity/noBannedTypes: bcs it is a logger
-export  function describeFunction(fn: Function): string {
+export function describeFunction(fn: Function): string {
 	const kind = getFunctionKind(fn);
-	const name = typeof fn.name === "string" && fn.name.length > 0 ? fn.name : "anonymous";
+	const name =
+		typeof fn.name === "string" && fn.name.length > 0 ? fn.name : "anonymous";
 
 	return `[${kind}: ${name}/${fn.length}]`;
 }
@@ -69,7 +70,9 @@ export function messagePart(msg: unknown): string {
  * Normalizes a free-form field bag so structured formats can serialize it
  * without special cases.
  */
-export function normalizeFields(fields: Record<string, unknown>): Record<string, unknown> {
+export function normalizeFields(
+	fields: Record<string, unknown>,
+): Record<string, unknown> {
 	const normalized: Record<string, unknown> = {};
 
 	for (const [key, value] of Object.entries(fields)) {
@@ -82,7 +85,10 @@ export function normalizeFields(fields: Record<string, unknown>): Record<string,
 /**
  * Converts unknown user input into a structured-safe value.
  */
-export function normalizeUnknown(value: unknown, seen = new WeakSet<object>()): unknown {
+export function normalizeUnknown(
+	value: unknown,
+	seen = new WeakSet<object>(),
+): unknown {
 	if (value === null) {
 		return null;
 	}
@@ -131,7 +137,9 @@ export function normalizeUnknown(value: unknown, seen = new WeakSet<object>()): 
 	seen.add(value);
 	const normalizedObject: Record<string, unknown> = {};
 
-	for (const [key, entryValue] of Object.entries(value as Record<string, unknown>)) {
+	for (const [key, entryValue] of Object.entries(
+		value as Record<string, unknown>,
+	)) {
 		normalizedObject[key] = normalizeUnknown(entryValue, seen);
 	}
 
@@ -143,7 +151,10 @@ export function normalizeUnknown(value: unknown, seen = new WeakSet<object>()): 
  * Serializes an error into a single structured payload while preserving the
  * standard fields and custom enumerable properties.
  */
-export function serializeError(error: Error, seen = new WeakSet<object>()): SerializedError {
+export function serializeError(
+	error: Error,
+	seen = new WeakSet<object>(),
+): SerializedError {
 	if (seen.has(error)) {
 		return {
 			name: error.name,
@@ -179,6 +190,7 @@ export function serializeError(error: Error, seen = new WeakSet<object>()): Seri
 	return serialized;
 }
 
+// biome-ignore lint/complexity/noBannedTypes: bcs it is a logger
 function getFunctionKind(fn: Function): string {
 	const constructorName = fn.constructor?.name;
 

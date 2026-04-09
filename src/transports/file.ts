@@ -1,11 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
-import { type FileTransportOptions, type LogFormat, type LogRecord, type RotationOptions, type Transport } from "../types.js";
-import type { FileRuntime } from "../runtime/file-runtime.js";
-import { getDirectoryName, getFileRuntime, hasDenoRuntime, hasNodeRuntime } from "../runtime/file-runtime.js";
-import { ensureTrailingNewline, getByteLength } from "../utils/text.js";
 import type { InternalTransport } from "../core/internal.js";
 import { SET_ACTIVE_FORMAT, TRANSPORT_META } from "../core/internal.js";
+import type { FileRuntime } from "../runtime/file-runtime.js";
+import {
+	getDirectoryName,
+	getFileRuntime,
+	hasDenoRuntime,
+	hasNodeRuntime,
+} from "../runtime/file-runtime.js";
+import type {
+	FileTransportOptions,
+	LogFormat,
+	LogRecord,
+	RotationOptions,
+	Transport,
+} from "../types.js";
+import { ensureTrailingNewline, getByteLength } from "../utils/text.js";
 
 /**
  * Creates a file transport for Node.js and Deno with append mode and optional
@@ -28,7 +39,13 @@ export function fileTransport(options: FileTransportOptions): Transport {
 		async write(_record: LogRecord, rendered: string) {
 			const runtime = await runtimePromise;
 			await ensureParentDirectory(runtime);
-			await writeWithRotation(runtime, options.path, rendered, options.rotate, activeFormat);
+			await writeWithRotation(
+				runtime,
+				options.path,
+				rendered,
+				options.rotate,
+				activeFormat,
+			);
 		},
 	};
 
@@ -76,7 +93,14 @@ async function writeWithRotation(
 	const currentSize = currentStat?.size ?? 0;
 
 	if (rotation.maxFiles === 1) {
-		await writeSingleFileRetention(runtime, path, entry, entrySize, rotation.maxBytes, format);
+		await writeSingleFileRetention(
+			runtime,
+			path,
+			entry,
+			entrySize,
+			rotation.maxBytes,
+			format,
+		);
 		return;
 	}
 
@@ -113,17 +137,20 @@ async function writeSingleFileRetention(
 		return;
 	}
 
-	const lines = currentText.length > 0
-		? currentText.replace(/\n+$/u, "").split("\n").filter((line) => line.length > 0)
-		: [];
+	const lines =
+		currentText.length > 0
+			? currentText
+					.replace(/\n+$/u, "")
+					.split("\n")
+					.filter((line) => line.length > 0)
+			: [];
 
 	let nextText = entry;
 
 	for (let start = 0; start <= lines.length; start += 1) {
 		const preserved = lines.slice(start);
-		const candidate = preserved.length > 0
-			? `${preserved.join("\n")}\n${entry}`
-			: entry;
+		const candidate =
+			preserved.length > 0 ? `${preserved.join("\n")}\n${entry}` : entry;
 
 		if (getByteLength(candidate) <= maxBytes) {
 			nextText = candidate;
@@ -134,7 +161,11 @@ async function writeSingleFileRetention(
 	await runtime.writeText(path, nextText);
 }
 
-async function rotateFiles(runtime: FileRuntime, path: string, maxFiles: number): Promise<void> {
+async function rotateFiles(
+	runtime: FileRuntime,
+	path: string,
+	maxFiles: number,
+): Promise<void> {
 	for (let index = maxFiles - 2; index >= 1; index -= 1) {
 		const source = `${path}.${index}`;
 		const target = `${path}.${index + 1}`;
@@ -165,11 +196,17 @@ function validateFileTransportOptions(options: FileTransportOptions): void {
 		return;
 	}
 
-	if (!Number.isFinite(options.rotate.maxBytes) || options.rotate.maxBytes <= 0) {
+	if (
+		!Number.isFinite(options.rotate.maxBytes) ||
+		options.rotate.maxBytes <= 0
+	) {
 		throw new Error("fileTransport rotate.maxBytes must be a positive number");
 	}
 
-	if (!Number.isInteger(options.rotate.maxFiles) || options.rotate.maxFiles <= 0) {
+	if (
+		!Number.isInteger(options.rotate.maxFiles) ||
+		options.rotate.maxFiles <= 0
+	) {
 		throw new Error("fileTransport rotate.maxFiles must be a positive integer");
 	}
 }

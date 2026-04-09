@@ -11,13 +11,17 @@ interface NodeFsRuntime {
 }
 
 interface DenoLike {
-	appendTextFile(path: string, data: string): Promise<void>;
+	appendTextFile?(path: string, data: string): Promise<void>;
 	mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
 	readTextFile(path: string): Promise<string>;
 	remove(path: string): Promise<void>;
 	rename(oldPath: string, newPath: string): Promise<void>;
 	stat(path: string): Promise<{ size: number }>;
-	writeTextFile(path: string, data: string): Promise<void>;
+	writeTextFile(
+		path: string,
+		data: string,
+		options?: { append?: boolean },
+	): Promise<void>;
 	errors?: {
 		AlreadyExists?: new (...args: unknown[]) => Error;
 		NotFound?: new (...args: unknown[]) => Error;
@@ -104,7 +108,11 @@ function createDenoFileRuntime(): FileRuntime {
 
 	return {
 		appendText(path: string, data: string) {
-			return deno.appendTextFile(path, data);
+			if (typeof deno.appendTextFile === "function") {
+				return deno.appendTextFile(path, data);
+			}
+
+			return deno.writeTextFile(path, data, { append: true });
 		},
 		async mkdir(path: string) {
 			try {
@@ -185,7 +193,9 @@ async function createNodeFileRuntime(): Promise<FileRuntime> {
 
 async function loadNodeFsRuntime(): Promise<NodeFsRuntime> {
 	if (!nodeFsRuntimePromise) {
-		nodeFsRuntimePromise = importModule("node:fs/promises") as Promise<NodeFsRuntime>;
+		nodeFsRuntimePromise = importModule(
+			"node:fs/promises",
+		) as Promise<NodeFsRuntime>;
 	}
 
 	return nodeFsRuntimePromise;
@@ -196,10 +206,12 @@ function importModule(specifier: string): Promise<unknown> {
 }
 
 function isNodeNotFoundError(error: unknown): boolean {
-	return typeof error === "object"
-		&& error !== null
-		&& "code" in error
-		&& (error as { code?: string }).code === "ENOENT";
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		(error as { code?: string }).code === "ENOENT"
+	);
 }
 
 function isDenoAlreadyExistsError(deno: DenoLike, error: unknown): boolean {
