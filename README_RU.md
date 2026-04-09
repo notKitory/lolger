@@ -28,6 +28,29 @@ logger.warn("Oh, warn...", new Error("warning"));
 logger.error("Error!!!", new Error("boom"));
 ```
 
+Эти convenience exports — тонкие обертки над глобальным singleton `lolger`.
+
+## Свои инстансы
+
+```ts
+import { Lolger, LogLevel, consoleTransport, fileTransport } from "lolger";
+
+const myLolger = new Lolger({
+  level: LogLevel.DEBUG,
+  transports: [
+    consoleTransport({ colors: true }),
+    fileTransport({
+      path: "./logs/worker.log",
+      format: "logfmt",
+    }),
+  ],
+});
+
+const logger = myLolger.getLogger("worker");
+
+logger.info("Job started");
+```
+
 ## Настройка transport-ов
 
 ```ts
@@ -120,14 +143,25 @@ interface Transport {
 }
 
 class Logger {
-  static level: LogLevel;
-
   debug(...msgs: unknown[]): void;
   log(...msgs: unknown[]): void;
   info(...msgs: unknown[]): void;
   warn(...msgs: unknown[]): void;
   error(...msgs: unknown[]): void;
 }
+
+class Lolger {
+  constructor(options?: ConfigureLoggerOptions);
+
+  level: LogLevel;
+  configureLogger(options: ConfigureLoggerOptions): void;
+  getLogger(namespace: string): Logger;
+  setLogLevel(level: LogLevel): void;
+  flushLogger(): Promise<void>;
+  closeLogger(): Promise<void>;
+}
+
+const lolger: Lolger;
 
 function configureLogger(options: ConfigureLoggerOptions): void;
 function consoleTransport(options?: ConsoleTransportOptions): Transport;
@@ -140,6 +174,8 @@ function setLogLevel(level: LogLevel): void;
 
 | Экспорт | Описание |
 | --- | --- |
+| `lolger` | Глобальный singleton `Lolger`, на который завязаны convenience exports. |
+| `Lolger` | Класс для создания изолированных logging pipeline со своей конфигурацией и transport-ами. |
 | `configureLogger(options)` | Обновляет глобальную конфигурацию логгера, включая transport-ы и формат по умолчанию. |
 | `consoleTransport(options)` | Создает console transport. |
 | `fileTransport(options)` | Создает file transport для Node.js и Deno. Поддерживает append-режим и ротацию по размеру. |
@@ -152,7 +188,7 @@ function setLogLevel(level: LogLevel): void;
 
 - Глобальный уровень по умолчанию — `LogLevel.LOG`.
 - Глобальный формат по умолчанию — `pretty`.
-- Если transport-ы явно не заданы, `lolger` использует стандартный console transport.
+- Каждый инстанс `Lolger` начинает со стандартного console transport, пока вы явно не замените его transport-ы.
 - В режиме `pretty` для консоли объекты `Error` логируются в два шага: сначала formatted line, затем каждая ошибка отдельно как native error. Это сохраняет корректное отображение ошибок в браузере.
 - В file mode и structured-форматах ошибки сериализуются внутри одной записи.
 - `baseFields` попадают в structured output и `logfmt`.

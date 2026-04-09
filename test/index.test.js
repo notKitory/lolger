@@ -7,12 +7,14 @@ import { setTimeout as delay } from "node:timers/promises";
 
 import {
 	LogLevel,
+	Lolger,
 	closeLogger,
 	configureLogger,
 	consoleTransport,
 	fileTransport,
 	flushLogger,
 	getLogger,
+	lolger,
 } from "../dist/index.js";
 
 afterEach(async () => {
@@ -136,6 +138,40 @@ test("jsonl output includes structured fields and serialized errors", async () =
 	assert.deepEqual(payload.fields.meta, { env: "test" });
 	assert.equal(payload.errors[0].message, "boom");
 	assert.equal(payload.args[1].ok, true);
+});
+
+test("functions are rendered with name, kind, and arity", async () => {
+	const writes = [];
+
+	configureLogger({
+		level: LogLevel.DEBUG,
+		timestamp: "iso",
+		transports: [
+			{
+				name: "memory-functions",
+				format: "jsonl",
+				write(record, rendered) {
+					writes.push({ record, rendered });
+				},
+			},
+		],
+	});
+
+	function handler(first, second) {
+		return `${first}:${second}`;
+	}
+
+	async function fetchUser(id) {
+		return id;
+	}
+
+	getLogger("fn").info(handler, fetchUser);
+	await flushLogger();
+
+	const payload = JSON.parse(writes[0].rendered);
+	assert.equal(payload.message, "[Function: handler/2] [AsyncFunction: fetchUser/1]");
+	assert.equal(payload.args[0], "[Function: handler/2]");
+	assert.equal(payload.args[1], "[AsyncFunction: fetchUser/1]");
 });
 
 test("logfmt escapes strings and JSON-stringifies complex values", async () => {
@@ -478,6 +514,54 @@ test("built output keeps Node file system access out of static imports", async (
 
 	assert.doesNotMatch(builtSource, /^import .*node:fs\/promises/m);
 	assert.doesNotMatch(builtSource, /^import .*node:fs$/m);
+});
+
+test("custom Lolger instances stay isolated from the global singleton", async () => {
+	const globalWrites = [];
+	const customWrites = [];
+
+	configureLogger({
+		level: LogLevel.DEBUG,
+		transports: [
+			{
+				name: "global-memory",
+				format: "jsonl",
+				write(record, rendered) {
+					globalWrites.push({ record, rendered });
+				},
+			},
+		],
+	});
+
+	const customLolger = new Lolger({
+		level: LogLevel.DEBUG,
+		transports: [
+			{
+				name: "custom-memory",
+				format: "jsonl",
+				write(record, rendered) {
+					customWrites.push({ record, rendered });
+				},
+			},
+		],
+	});
+
+	assert.equal(lolger.constructor, Lolger);
+
+	getLogger("global").info("from global");
+	customLolger.getLogger("custom").info("from custom");
+
+	await flushLogger();
+	await customLolger.flushLogger();
+
+	assert.equal(globalWrites.length, 1);
+	assert.equal(customWrites.length, 1);
+	assert.equal(globalWrites[0].record.namespace, "global");
+	assert.equal(customWrites[0].record.namespace, "custom");
+	assert.equal(globalWrites[0].record.message, "from global");
+	assert.equal(customWrites[0].record.message, "from custom");
+
+	await customLolger.closeLogger();
 });
 
 function mockConsole() {
