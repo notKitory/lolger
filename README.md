@@ -12,7 +12,7 @@
 npm i lolger
 ```
 
-## Usage
+## Quick Start
 
 ```ts
 import { getLogger, LogLevel, setLogLevel } from "lolger";
@@ -27,6 +27,54 @@ logger.info("Some info:", "nothing here");
 logger.warn("Oh, warn...", new Error("warning"));
 logger.error("Error!!!", new Error("boom"));
 ```
+
+## Configuring Transports
+
+```ts
+import {
+  LogLevel,
+  configureLogger,
+  consoleTransport,
+  fileTransport,
+  getLogger,
+} from "lolger";
+
+configureLogger({
+  level: LogLevel.DEBUG,
+  timestamp: "iso",
+  baseFields: {
+    service: "api",
+    env: "production",
+  },
+  transports: [
+    consoleTransport({ colors: true }),
+    fileTransport({
+      path: "./logs/app.log",
+      format: "jsonl",
+      rotate: {
+        maxBytes: 1024 * 1024,
+        maxFiles: 3,
+      },
+    }),
+  ],
+});
+
+const logger = getLogger("http");
+
+logger.info("Request finished", {
+  status: 200,
+  durationMs: 42,
+});
+```
+
+## Formats
+
+| Format | Description |
+| --- | --- |
+| `pretty` | Human-readable colored output for development. |
+| `json` | A readable multi-line JSON object per log record. |
+| `jsonl` | A compact JSON object per line. Recommended for files and log ingestion. |
+| `logfmt` | A single-line `key=value` record with JSON-stringified complex values. |
 
 ## Example Output
 
@@ -43,12 +91,32 @@ logger.error("Error!!!", new Error("boom"));
 ## API
 
 ```ts
+type LogFormat = "pretty" | "json" | "jsonl" | "logfmt";
+
 enum LogLevel {
   DEBUG = 0,
   LOG = 1,
   INFO = 2,
   WARN = 3,
   ERROR = 4,
+}
+
+interface LogRecord {
+  timestamp: string;
+  level: "DEBUG" | "LOG" | "INFO" | "WARN" | "ERROR";
+  namespace: string;
+  message: string;
+  args: unknown[];
+  fields?: Record<string, unknown>;
+  errors?: SerializedError[];
+}
+
+interface Transport {
+  name: string;
+  format?: LogFormat;
+  write(record: LogRecord, rendered: string): void | Promise<void>;
+  flush?(): Promise<void>;
+  close?(): Promise<void>;
 }
 
 class Logger {
@@ -61,31 +129,36 @@ class Logger {
   error(...msgs: unknown[]): void;
 }
 
+function configureLogger(options: ConfigureLoggerOptions): void;
+function consoleTransport(options?: ConsoleTransportOptions): Transport;
+function fileTransport(options: FileTransportOptions): Transport;
+function flushLogger(): Promise<void>;
+function closeLogger(): Promise<void>;
 function getLogger(namespace: string): Logger;
 function setLogLevel(level: LogLevel): void;
 ```
 
 | Export | Description |
 | --- | --- |
-| `LogLevel` | Log level enum used to control the global logging threshold. |
-| `setLogLevel(level)` | Sets the global log level for all logger instances. |
-| `getLogger(namespace)` | Creates a logger with a specific color for the given namespace. |
-| `logger.debug(...msgs)` | Prints messages when the active level is `DEBUG`. |
-| `logger.log(...msgs)` | Prints messages when the active level is `LOG` or more important. |
-| `logger.info(...msgs)` | Prints messages when the active level is `INFO` or more important. |
-| `logger.warn(...msgs)` | Prints messages when the active level is `WARN` or more important. |
-| `logger.error(...msgs)` | Prints messages when the active level is `ERROR`. |
+| `configureLogger(options)` | Updates the global logger configuration, including transports and default format. |
+| `consoleTransport(options)` | Creates a console transport. |
+| `fileTransport(options)` | Creates a file transport for Node.js and Deno. Supports append mode and size-based rotation. |
+| `flushLogger()` | Waits for pending async transport writes to finish. |
+| `closeLogger()` | Flushes and closes transports that implement `close()`. |
+| `getLogger(namespace)` | Creates a namespaced logger. |
+| `setLogLevel(level)` | Sets the global log level quickly without changing the rest of the config. |
 
 ## Notes
 
 - The default global level is `LogLevel.LOG`.
-- Each namespace gets a stable color chosen from an internal palette.
-- Strings are printed as-is.
-- Plain objects are serialized with `json-stringify-safe` for correct handling of circular references.
-- Functions are displayed as `function()`.
-- `Error` instances are included in the formatted message and then forwarded to the console as native errors.
-- The package is TypeScript-first and ships declaration files.
+- The default global format is `pretty`.
+- If you do not configure transports explicitly, `lolger` uses the default console transport.
+- In `pretty` console mode, `Error` objects are logged in two steps: first the formatted line, then each native error separately. This preserves browser-friendly error rendering.
+- In file mode and structured formats, errors are serialized into a single record.
+- `baseFields` are included in structured output and `logfmt`.
+- `fileTransport()` is supported in Node.js and Deno. Browsers support console output only.
+- With `maxFiles = 1`, `jsonl` and `logfmt` keep removing old lines from the top to make room for new ones. `pretty` and `json` replace the file with the newest record instead.
 
 ## Development
 
-If you have ideas, suggestions, or fixes, I would appreciate an [issue](https://github.com/notKitory/lolger/issues) or a [pull request](https://github.com/notKitory/lolger/pulls).
+If you have ideas, suggestions, or fixes, I would appreciate any [issue](https://github.com/notKitory/lolger/issues) or [pull request](https://github.com/notKitory/lolger/pulls).

@@ -12,7 +12,7 @@
 npm i lolger
 ```
 
-## Использование
+## Быстрый старт
 
 ```ts
 import { getLogger, LogLevel, setLogLevel } from "lolger";
@@ -27,6 +27,54 @@ logger.info("Some info:", "nothing here");
 logger.warn("Oh, warn...", new Error("warning"));
 logger.error("Error!!!", new Error("boom"));
 ```
+
+## Настройка transport-ов
+
+```ts
+import {
+  LogLevel,
+  configureLogger,
+  consoleTransport,
+  fileTransport,
+  getLogger,
+} from "lolger";
+
+configureLogger({
+  level: LogLevel.DEBUG,
+  timestamp: "iso",
+  baseFields: {
+    service: "api",
+    env: "production",
+  },
+  transports: [
+    consoleTransport({ colors: true }),
+    fileTransport({
+      path: "./logs/app.log",
+      format: "jsonl",
+      rotate: {
+        maxBytes: 1024 * 1024,
+        maxFiles: 3,
+      },
+    }),
+  ],
+});
+
+const logger = getLogger("http");
+
+logger.info("Request finished", {
+  status: 200,
+  durationMs: 42,
+});
+```
+
+## Форматы
+
+| Формат | Описание |
+| --- | --- |
+| `pretty` | Человекочитаемый цветной вывод для разработки. |
+| `json` | Один читаемый многострочный JSON-объект на запись. |
+| `jsonl` | Один компактный JSON-объект на строку. Рекомендуется для файлов и ingestion. |
+| `logfmt` | Одна строка в формате `key=value`, где сложные значения сериализуются в JSON. |
 
 ## Пример вывода
 
@@ -43,12 +91,32 @@ logger.error("Error!!!", new Error("boom"));
 ## API
 
 ```ts
+type LogFormat = "pretty" | "json" | "jsonl" | "logfmt";
+
 enum LogLevel {
   DEBUG = 0,
   LOG = 1,
   INFO = 2,
   WARN = 3,
   ERROR = 4,
+}
+
+interface LogRecord {
+  timestamp: string;
+  level: "DEBUG" | "LOG" | "INFO" | "WARN" | "ERROR";
+  namespace: string;
+  message: string;
+  args: unknown[];
+  fields?: Record<string, unknown>;
+  errors?: SerializedError[];
+}
+
+interface Transport {
+  name: string;
+  format?: LogFormat;
+  write(record: LogRecord, rendered: string): void | Promise<void>;
+  flush?(): Promise<void>;
+  close?(): Promise<void>;
 }
 
 class Logger {
@@ -61,31 +129,36 @@ class Logger {
   error(...msgs: unknown[]): void;
 }
 
+function configureLogger(options: ConfigureLoggerOptions): void;
+function consoleTransport(options?: ConsoleTransportOptions): Transport;
+function fileTransport(options: FileTransportOptions): Transport;
+function flushLogger(): Promise<void>;
+function closeLogger(): Promise<void>;
 function getLogger(namespace: string): Logger;
 function setLogLevel(level: LogLevel): void;
 ```
 
 | Экспорт | Описание |
 | --- | --- |
-| `LogLevel` | Перечисление уровней логирования, которое используется для управления глобальным порогом логов. |
-| `setLogLevel(level)` | Устанавливает глобальный уровень логирования для всех экземпляров логгера. |
-| `getLogger(namespace)` | Создает логгер с определенным цветом для указанного namespace. |
-| `logger.debug(...msgs)` | Выводит сообщения, когда активный уровень равен `DEBUG`. |
-| `logger.log(...msgs)` | Выводит сообщения, когда активный уровень равен `LOG` или выше по важности. |
-| `logger.info(...msgs)` | Выводит сообщения, когда активный уровень равен `INFO` или выше по важности. |
-| `logger.warn(...msgs)` | Выводит сообщения, когда активный уровень равен `WARN` или выше по важности. |
-| `logger.error(...msgs)` | Выводит сообщения, когда активный уровень равен `ERROR`. |
+| `configureLogger(options)` | Обновляет глобальную конфигурацию логгера, включая transport-ы и формат по умолчанию. |
+| `consoleTransport(options)` | Создает console transport. |
+| `fileTransport(options)` | Создает file transport для Node.js и Deno. Поддерживает append-режим и ротацию по размеру. |
+| `flushLogger()` | Дожидается завершения всех pending async-записей. |
+| `closeLogger()` | Выполняет flush и закрывает transport-ы, если у них есть `close()`. |
+| `getLogger(namespace)` | Создает логгер с namespace. |
+| `setLogLevel(level)` | Быстро меняет глобальный уровень логирования, не трогая остальную конфигурацию. |
 
 ## Примечания
 
 - Глобальный уровень по умолчанию — `LogLevel.LOG`.
-- Каждый namespace получает стабильный цвет из внутренней палитры.
-- Строки выводятся как есть.
-- Обычные объекты сериализуются через `json-stringify-safe` для корректной работы с циклическими ссылками.
-- Функции отображаются как `function()`.
-- Экземпляры `Error` попадают в форматированное сообщение, а затем дополнительно передаются в консоль как нативные ошибки.
-- Пакет ориентирован на TypeScript и поставляется с файлами деклараций.
+- Глобальный формат по умолчанию — `pretty`.
+- Если transport-ы явно не заданы, `lolger` использует стандартный console transport.
+- В режиме `pretty` для консоли объекты `Error` логируются в два шага: сначала formatted line, затем каждая ошибка отдельно как native error. Это сохраняет корректное отображение ошибок в браузере.
+- В file mode и structured-форматах ошибки сериализуются внутри одной записи.
+- `baseFields` попадают в structured output и `logfmt`.
+- `fileTransport()` поддерживается в Node.js и Deno. В браузерах доступен только console output.
+- При `maxFiles = 1` форматы `jsonl` и `logfmt` удаляют старые строки сверху, освобождая место для новых. Форматы `pretty` и `json` в этом режиме просто заменяют файл новой записью.
 
 ## Разработка
 
-Если у вас есть идеи, предложения или исправления, буду благодарен за [issue](https://github.com/notKitory/lolger/issues) или [pull request](https://github.com/notKitory/lolger/pulls).
+Если у вас есть идеи, предложения или исправления, буду благодарен любым [issue](https://github.com/notKitory/lolger/issues) или [pull request](https://github.com/notKitory/lolger/pulls).
